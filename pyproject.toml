@@ -1,10 +1,6 @@
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "biasana"
-version = "0.0.1"  # Replace with the actual version if get_version() is defined elsewhere
+version = "0.0.1"
 description = "A package for analyzing bias in textual data."
 readme = "README.md"
 readme-content-type = "text/markdown"
@@ -22,17 +18,3 @@ classifiers = [
     "Topic :: Utilities",
     "Programming Language :: Python :: 3.9",
 ]
-
-[project.dependencies]
-setuptools = "*"
-wheel = "*"
-typing = "*"
-scikit-learn = "*"
-numpy = "*"
-spacy = "*"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools]
-package-dir = {"" = "src"}
