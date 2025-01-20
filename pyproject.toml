@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "biasana"
+version = "0.1.0"  # Replace with the actual version if get_version() is defined elsewhere
+description = "A package for analyzing bias in textual data."
+readme = "README.md"
+readme-content-type = "text/markdown"
+homepage = "https://github.com/MostHumble/biasana/"
+urls = { 
+    "Homepage" = "https://github.com/MostHumble/biasana/",
+    "Issues" = "https://github.com/MostHumble/biasana/issues"
+}
+authors = [
+    { name = "sifal klioui", email = "sifalklioui@yahoo.com" }
+]
+license = { text = "Apache 2.0" }
+requires-python = ">=3.9"
+classifiers = [
+    "Topic :: Utilities",
+    "Programming Language :: Python :: 3.9",
+]
+
+[project.dependencies]
+setuptools = "*"
+wheel = "*"
+typing = "*"
+scikit-learn = "*"
+numpy = "*"
+spacy = "*"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
