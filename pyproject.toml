@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biasana"
-version = "0.1.0"  # Replace with the actual version if get_version() is defined elsewhere
+version = "0.0.1"  # Replace with the actual version if get_version() is defined elsewhere
 description = "A package for analyzing bias in textual data."
 readme = "README.md"
 readme-content-type = "text/markdown"
