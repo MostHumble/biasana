@@ -8,10 +8,8 @@ version = "0.0.1"
 description = "A package for analyzing bias in textual data."
 readme = { file = "README.md", content-type = "text/markdown" }
 homepage = "https://github.com/MostHumble/biasana/"
-urls = { 
-    Homepage = "https://github.com/MostHumble/biasana/",
-    Issues = "https://github.com/MostHumble/biasana/issues"
-}
+urls.Homepage = "https://github.com/MostHumble/biasana/"
+urls.Issues = "https://github.com/MostHumble/biasana/issues"
 authors = [
     { name = "sifal klioui", email = "sifalklioui@yahoo.com" }
 ]
