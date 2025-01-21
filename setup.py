@@ -38,5 +38,6 @@ setup(
         "scikit-learn",
         "numpy",
         "spacy",
+        "transformers",
     ],
 )

@@ -23,6 +23,7 @@ dependencies = [
     "scikit-learn",
     "numpy",
     "spacy",
+    "transformers"
 ]
 
 [project.urls]
