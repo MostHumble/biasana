@@ -3,9 +3,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import re
 import spacy
+from typing import List, Optional
 
 class AssociationAnalyzer:
-    def __init__(self, min_df=2, spacy_model="en_core_web_sm"):
+    def __init__(self, min_df: int = 2, spacy_model: str = "en_core_web_sm") -> None:
         """
         Initialize the analyzer with a minimum document frequency for vocabulary.
         
@@ -15,9 +16,9 @@ class AssociationAnalyzer:
         self.min_df = min_df
         self.vectorizer = TfidfVectorizer(min_df=min_df)
         self.nlp = spacy.load(spacy_model)
-        self.results = None
+        self.results: Optional[np.ndarray] = None
     
-    def preprocess_text(self, documents):
+    def preprocess_text(self, documents: List[str]) -> List[str]:
         """
         Tokenize, lemmatize, and preprocess documents for analysis.
         Args:
@@ -32,7 +33,7 @@ class AssociationAnalyzer:
             processed.append(lemmatized)
         return processed
     
-    def fit_transform(self, documents, preprocess=True):
+    def fit_transform(self, documents: List[str], preprocess: bool = True) -> np.ndarray:
         """
         Fit and transform the TF-IDF vectorizer on the documents.
         Args:
@@ -46,7 +47,7 @@ class AssociationAnalyzer:
         feature_names = np.array(self.vectorizer.get_feature_names_out())
         return tfidf_matrix, feature_names, documents
 
-    def filter_documents_by_term(slef, documents, term):
+    def filter_documents_by_term(self, documents: List[str], term: str) -> List[str]:
         """
         Filter documents containing the exact term.
         Args:
@@ -58,7 +59,7 @@ class AssociationAnalyzer:
         term_pattern = re.compile(rf'\b{re.escape(term)}\b', re.IGNORECASE)  # Match as a whole word
         return [doc for doc in documents if term_pattern.search(doc)]
 
-    def compute_cosine_similarity(self, term_vector, global_avg_vector):
+    def compute_cosine_similarity(self, term_vector: np.array, global_avg_vector: np.array) -> float:
         """
         Compute cosine similarity between two vectors.
         Args:
@@ -72,7 +73,7 @@ class AssociationAnalyzer:
         return cosine_similarity(term_vector, global_avg_vector)[0][0]
 
 
-    def normalize_tfidf_difference(self, avg_tfidf, overall_avg_tfidf):
+    def normalize_tfidf_difference(self, avg_tfidf: np.array, overall_avg_tfidf: np.array) -> np.array:
         """
         Compute normalized TF-IDF differences.
         Args:
@@ -84,7 +85,7 @@ class AssociationAnalyzer:
         std_dev = np.std(avg_tfidf)
         return (avg_tfidf - overall_avg_tfidf) / (std_dev if std_dev > 0 else 1)
 
-    def analyze_subgroup_terms(self, documents, subgroup_terms, preprecess=True):
+    def analyze_subgroup_terms(self, documents: List[str], subgroup_terms: List[str], preprecess: bool = True): 
         """
         Analyze associations between subgroup terms and co-occurring words.
         Args:
@@ -127,7 +128,7 @@ class AssociationAnalyzer:
 
         return results
 
-    def get_top_associations(self, results, term, n=5):
+    def get_top_associations(self, results: dict, term: str, n: int = 5) -> List[tuple]:
         """
         Get the top n associations for a given term.
         
