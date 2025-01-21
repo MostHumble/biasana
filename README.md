@@ -93,5 +93,5 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## Issues and Support
 
-If you encounter any issues or need support, please file an issue at:
-https://github.com/MostHumble/biasana/issues
+If you encounter any issues or need support, please file an [issue](https://github.com/MostHumble/biasana/issues
+)
