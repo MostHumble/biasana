@@ -5,7 +5,7 @@ import re
 import spacy
 
 class AssociationAnalyzer:
-    def __init__(self, min_df=2, preprocess=True, spacy_model="en_core_web_sm"):
+    def __init__(self, min_df=2, spacy_model="en_core_web_sm"):
         """
         Initialize the analyzer with a minimum document frequency for vocabulary.
         
