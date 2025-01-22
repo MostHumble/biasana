@@ -1,205 +1,186 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
+from dataclasses import dataclass
+from .template_manager import TemplateManager
+
+@dataclass
+class AnalysisResult:
+    """Container for analysis results"""
+    context: str
+    probabilities: Dict[str, float]
+    normalized_probabilities: Dict[str, float]
+    total_probability: float
 
 class LogitAnalyzer:
     """
-    Analyzer for computing and comparing probabilities of different terms appearing in
-    specific contexts using language model logits.
+    Improved analyzer for computing and comparing probabilities of different terms
+    appearing in specific contexts using language models.
     """
     
     def __init__(
         self,
         model_name: str,
         revision: str = "main",
-        device: Optional[str] = None
+        device: Optional[str] = None,
+        custom_templates_path: Optional[str] = None
     ):
         """
-        Initialize the LogitAnalyzer with a specific language model.
+        Initialize the ImprovedBiasAnalyzer.
         
         Args:
-            model_name (str): Name of the pretrained model to use 
-            revision (str, optional): Revision of the model to load
-            device (str, optional): Device to run the model on ("cuda" or "cpu")
+            model_name: Name of the pretrained model to use
+            revision: Model revision to use
+            device: Device to run model on
+            custom_templates_path: Path to JSON file with custom templates
         """
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")        
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision).to(self.device)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            revision=revision
+        ).to(self.device)
         self.model.eval()
         
-    def compute_sequence_probabilities(
+        self.template_manager = TemplateManager(custom_templates_path)
+    
+    def compute_sequence_probability(
         self,
-        context: str,
-        target_terms: List[str],
-        normalize: bool = True
-    ) -> Dict[str, Dict[str, float]]:
+        sequence: str,
+        return_token_probs: bool = False
+    ) -> Union[float, tuple[float, List[float]]]:
         """
-        Compute the probability of each target term appearing after the given context.
+        Compute the probability of generating the entire sequence.
         
         Args:
-            context (str): The context string before the target terms
-            target_terms (List[str]): List of terms to analyze
-            normalize (bool): Whether to normalize the probabilities
+            sequence: Input sequence
+            return_token_probs: Whether to return individual token probabilities
             
         Returns:
-            Dict containing both raw and normalized probabilities for each term
+            Sequence probability and optionally token probabilities
         """
-        # Tokenize the input context
-        inputs = self.tokenizer(context, return_tensors="pt").to(self.device)
-        
-        # Tokenize target terms
-        term_tokens = {
-            term: self.tokenizer(term, add_special_tokens=False)["input_ids"]
-            for term in target_terms
-        }
-        
-        # Compute probabilities for each term
-        probabilities = {}
+        tokens = self.tokenizer(sequence, return_tensors="pt").to(self.device)
+        token_ids = tokens.input_ids[0]
         
         with torch.no_grad():
-            for term, tokens in term_tokens.items():
-                prob = self._compute_term_probability(inputs["input_ids"], tokens)
-                probabilities[term] = prob
-                
-        # Create results dictionary
-        results = {
-            "raw_probabilities": probabilities
-        }
-        
-        if normalize:
-            total_prob = sum(probabilities.values())
-            results["normalized_probabilities"] = {
-                term: prob / total_prob 
-                for term, prob in probabilities.items()
-            }
-            
-        return results
-    
-    def _compute_term_probability(
-        self,
-        context_ids: torch.Tensor,
-        term_tokens: List[int]
-    ) -> float:
-        """
-        Compute the probability of a specific term given the context.
-        
-        Args:
-            context_ids (torch.Tensor): Tokenized context
-            term_tokens (List[int]): Tokens of the target term
-            
-        Returns:
-            float: Probability of the term
-        """
-        prob = 1.0
-        current_ids = context_ids
-        
-        for token in term_tokens:
-            outputs = self.model(input_ids=current_ids)
-            logits = outputs.logits[:, -1, :]
+            outputs = self.model(input_ids=tokens.input_ids)
+            logits = outputs.logits[0, :-1]  # Remove last position
             probs = torch.softmax(logits, dim=-1)
             
-            token_prob = probs[0, token].item()
-            prob *= token_prob
+            # Get probability of each actual next token
+            token_probs = [
+                probs[i, token_ids[i + 1]].item()
+                for i in range(len(token_ids) - 1)
+            ]
             
-            # Update context for next token prediction
-            current_ids = torch.cat([
-                current_ids,
-                torch.tensor([[token]], device=self.device)
-            ], dim=1)
+            # Compute joint probability
+            sequence_prob = torch.prod(torch.tensor(token_probs)).item()
             
-        return prob
-    
+            if return_token_probs:
+                return sequence_prob, token_probs
+            return sequence_prob
+
     def analyze_bias(
         self,
-        contexts: List[str],
+        template: str,
         target_groups: List[str],
-        aggregate: str = "mean"
-    ) -> Dict[str, Dict[str, Union[float, List[float]]]]:
+        use_template_name: bool = False
+    ) -> AnalysisResult:
         """
-        Analyze potential biases across multiple contexts for different target groups.
+        Analyze bias for different target groups in a given template.
         
         Args:
-            contexts (List[str]): List of context strings to analyze
-            target_groups (List[str]): List of target groups to compare
-            aggregate (str): Aggregation method ("mean" or "raw")
+            template: Template string or template name
+            target_groups: List of target groups to analyze
+            use_template_name: Whether template is a name from template manager
             
         Returns:
-            Dict containing analysis results including raw probabilities and summary statistics
+            AnalysisResult containing analysis results
         """
-        all_results = []
+        if use_template_name:
+            template = self.template_manager.get_template(template)
+            if template is None:
+                raise ValueError(f"Template '{template}' not found")
         
-        for context in contexts:
-            result = self.compute_sequence_probabilities(
-                context,
-                target_groups,
-                normalize=True
-            )
-            all_results.append(result)
-            
-        # Aggregate results
-        aggregated = {
-            "contexts": contexts,
-            "groups": target_groups,
-            "raw_results": all_results,
+        self.template_manager.validate_template(template)
+        
+        # Compute probabilities for each group
+        raw_probs = {}
+        for group in target_groups:
+            sequence = template.replace("[TARGET]", group)
+            raw_probs[group] = self.compute_sequence_probability(sequence)
+        
+        # Normalize probabilities
+        total_prob = sum(raw_probs.values())
+        normalized_probs = {
+            group: prob / total_prob if total_prob > 0 else 0.0
+            for group, prob in raw_probs.items()
         }
         
-        if aggregate == "mean":
-            # Compute mean probabilities across contexts
-            mean_probs = {}
-            for group in target_groups:
-                probs = [
-                    r["normalized_probabilities"][group]
-                    for r in all_results
-                ]
-                mean_probs[group] = sum(probs) / len(probs)
-            aggregated["mean_probabilities"] = mean_probs
-            
-        return aggregated
+        return AnalysisResult(
+            context=template,
+            probabilities=raw_probs,
+            normalized_probabilities=normalized_probs,
+            total_probability=total_prob
+        )
 
-    def get_top_biased_contexts(
+    def batch_analyze(
         self,
-        contexts: List[str],
+        templates: List[str],
         target_groups: List[str],
-        top_n: int = 5
-    ) -> List[Tuple[str, Dict[str, float]]]:
+        use_template_names: bool = False
+    ) -> List[AnalysisResult]:
         """
-        Find the contexts with the highest disparity between group probabilities.
+        Analyze bias across multiple templates.
         
         Args:
-            contexts (List[str]): List of contexts to analyze
-            target_groups (List[str]): Groups to compare
-            top_n (int): Number of top biased contexts to return
+            templates: List of templates or template names
+            target_groups: List of target groups to analyze
+            use_template_names: Whether templates are names from template manager
             
         Returns:
-            List of tuples containing contexts and their probability distributions
+            List of AnalysisResult for each template
         """
-        context_scores = []
+        return [
+            self.analyze_bias(template, target_groups, use_template_names)
+            for template in templates
+        ]
+
+    def get_most_biased_templates(
+        self,
+        templates: List[str],
+        target_groups: List[str],
+        top_n: int = 5,
+        use_template_names: bool = False
+    ) -> List[AnalysisResult]:
+        """
+        Find templates with highest disparity between group probabilities.
         
-        for context in contexts:
-            result = self.compute_sequence_probabilities(
-                context,
-                target_groups,
-                normalize=True
-            )
-            probs = result["normalized_probabilities"]
+        Args:
+            templates: List of templates or template names
+            target_groups: List of target groups to analyze
+            top_n: Number of top biased templates to return
+            use_template_names: Whether templates are names from template manager
             
-            # Compute disparity score (max difference between any two groups)
-            max_diff = max(
+        Returns:
+            List of top_n most biased templates and their results
+        """
+        results = self.batch_analyze(templates, target_groups, use_template_names)
+        
+        # Compute max probability difference for each result
+        def get_max_diff(result: AnalysisResult) -> float:
+            probs = result.normalized_probabilities
+            return max(
                 abs(probs[g1] - probs[g2])
                 for i, g1 in enumerate(target_groups)
                 for g2 in target_groups[i+1:]
             )
-            
-            context_scores.append((context, probs, max_diff))
-            
-        # Sort by disparity score and return top_n
-        sorted_contexts = sorted(
-            context_scores,
-            key=lambda x: x[2],
+        
+        # Sort by maximum probability difference
+        sorted_results = sorted(
+            results,
+            key=get_max_diff,
             reverse=True
         )
         
-        return [
-            (context, probs)
-            for context, probs, _ in sorted_contexts[:top_n]
-        ]
+        return sorted_results[:top_n]
