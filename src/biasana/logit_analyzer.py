@@ -10,19 +10,21 @@ class LogitAnalyzer:
     
     def __init__(
         self,
-        model_name: str = "gpt2",
+        model_name: str,
+        revision: str = "main",
         device: Optional[str] = None
     ):
         """
         Initialize the LogitAnalyzer with a specific language model.
         
         Args:
-            model_name (str): Name of the pretrained model to use (default: "gpt2")
+            model_name (str): Name of the pretrained model to use 
+            revision (str, optional): Revision of the model to load
             device (str, optional): Device to run the model on ("cuda" or "cpu")
         """
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")        
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision).to(self.device)
         self.model.eval()
         
     def compute_sequence_probabilities(
