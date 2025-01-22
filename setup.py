@@ -39,5 +39,6 @@ setup(
         "numpy",
         "spacy",
         "transformers",
+        "torch",
     ],
 )
