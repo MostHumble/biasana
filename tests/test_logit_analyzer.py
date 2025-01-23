@@ -51,10 +51,10 @@ class TestLogitAnalyzer(unittest.TestCase):
         self.assertIsInstance(results[0].total_probability, float)
         
         # Verify sorting by bias (highest disparity first)
-        first_disparity = max(abs(results[0].normalized_probabilities["man"] - 
-                                results[0].normalized_probabilities["woman"]))
-        second_disparity = max(abs(results[1].normalized_probabilities["man"] - 
-                                 results[1].normalized_probabilities["woman"]))
+        first_disparity = abs(results[0].normalized_probabilities["man"] - 
+                             results[0].normalized_probabilities["woman"])
+        second_disparity = abs(results[1].normalized_probabilities["man"] - 
+                              results[1].normalized_probabilities["woman"])
         self.assertGreaterEqual(first_disparity, second_disparity)
 
     def test_empty_templates(self):
