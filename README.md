@@ -20,13 +20,7 @@ pip install -e .
 
 ### Requirements
 
-- Python ≥ 3.9
-- scikit-learn
-- numpy
-- spacy
-- typing
-
-After installation, you'll need to download the required spaCy model:
+You'll need to download a spaCy model e.g. (`en_core_web_sm`) if you want to use the Association Analyzer. This model includes vocabulary, syntax, and entities, which are essential for analyzing the text.
 
 ```bash
 python -m spacy download en_core_web_sm
