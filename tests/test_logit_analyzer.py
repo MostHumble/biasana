@@ -1,6 +1,6 @@
 import unittest
 from biasana.logit_analyzer import LogitAnalyzer, AnalysisResult
-from typing import List, Dict
+from typing import List
 
 class TestLogitAnalyzer(unittest.TestCase):
     
