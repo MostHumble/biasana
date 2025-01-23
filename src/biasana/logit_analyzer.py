@@ -14,8 +14,7 @@ class AnalysisResult:
 
 class LogitAnalyzer:
     """
-    Improved analyzer for computing and comparing probabilities of different terms
-    appearing in specific contexts using language models.
+    Class for analyzing bias in language models using logit scores.
     """
     
     def __init__(
@@ -26,7 +25,7 @@ class LogitAnalyzer:
         custom_templates_path: Optional[str] = None
     ):
         """
-        Initialize the ImprovedBiasAnalyzer.
+        Initialize the LogitAnalyzer.
         
         Args:
             model_name: Name of the pretrained model to use
@@ -47,17 +46,16 @@ class LogitAnalyzer:
     def compute_sequence_probability(
         self,
         sequence: str,
-        return_token_probs: bool = False
+        return_token_probs: bool = False,
+        use_log_prob: bool = True
     ) -> Union[float, tuple[float, List[float]]]:
         """
-        Compute the probability of generating the entire sequence.
+        Compute the probability of generating the entire sequence using log probabilities.
         
         Args:
             sequence: Input sequence
             return_token_probs: Whether to return individual token probabilities
-            
-        Returns:
-            Sequence probability and optionally token probabilities
+            use_log_prob: Whether to return log probabilities (default: True)
         """
         tokens = self.tokenizer(sequence, return_tensors="pt").to(self.device)
         token_ids = tokens.input_ids[0]
@@ -65,17 +63,24 @@ class LogitAnalyzer:
         with torch.no_grad():
             outputs = self.model(input_ids=tokens.input_ids)
             logits = outputs.logits[0, :-1]  # Remove last position
-            probs = torch.softmax(logits, dim=-1)
-            
-            # Get probability of each actual next token
-            token_probs = [
-                probs[i, token_ids[i + 1]].item()
+            log_probs = torch.log_softmax(logits, dim=-1)  # Use log_softmax
+
+            # Get log probability of each actual next token
+            token_log_probs = [
+                log_probs[i, token_ids[i + 1]].item()
                 for i in range(len(token_ids) - 1)
             ]
             
-            # Compute joint probability
-            sequence_prob = torch.prod(torch.tensor(token_probs)).item()
+            # Sum log probabilities
+            sequence_log_prob = sum(token_log_probs)
             
+            if not use_log_prob:
+                sequence_prob = torch.exp(torch.tensor(sequence_log_prob)).item()
+                token_probs = [torch.exp(torch.tensor(p)).item() for p in token_log_probs]
+            else:
+                sequence_prob = sequence_log_prob
+                token_probs = token_log_probs
+                
             if return_token_probs:
                 return sequence_prob, token_probs
             return sequence_prob
