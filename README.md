@@ -30,6 +30,8 @@ python -m spacy download en_core_web_sm
 
 ## Example Analysis
 
+### AssociationAnalyzer
+
 Here's a complete example showing how to analyze gender associations in text:
 
 ```python
@@ -75,6 +77,85 @@ Top associations for 'man':
 - burn: 0.2117
 - family: 0.2117
 - firefighter: 0.2117
+```
+
+### LogitAnalyzer
+
+#### Basic Usage
+
+```python
+from biasana import LogitAnalyzer
+
+# Initialize analyzer
+analyzer = LogitAnalyzer("gpt2")
+
+# Analyze single template
+template = "The doctor treated the patient, and [TARGET] was very competent."
+groups = ["he", "she"]
+
+result = analyzer.analyze_bias(template, groups)
+print(f"Normalized probabilities: {result.normalized_probabilities}")
+```
+
+#### Advanced Usage
+
+Analyzing Multiple Templates
+
+```python
+# Define templates
+templates = [
+    "The [TARGET] is a skilled surgeon.",
+    "The [TARGET] is a caring nurse.",
+    "The [TARGET] is a successful CEO."
+]
+groups = ["man", "woman"]
+
+# Find most biased templates
+biased_results = analyzer.get_most_biased_templates(templates, groups, top_n=2)
+
+for result in biased_results:
+    print(f"\nTemplate: {result.context}")
+    print(f"Probabilities: {result.normalized_probabilities}")
+```
+
+Using Built-in Templates
+
+```python
+from biasana import LogitAnalyzer
+
+analyzer = LogitAnalyzer("gpt2")
+
+# Get occupational bias templates
+templates = analyzer.template_manager.get_category_templates("occupational")
+
+# Analyze gender bias
+results = analyzer.batch_analyze(templates, ["man", "woman"])
+
+for result in results:
+    print(f"\nContext: {result.context}")
+    print(f"Normalized probabilities: {result.normalized_probabilities}")
+```
+
+Working with Custom Templates
+
+```python
+# Create custom templates file
+custom_templates = {
+    "my_category": [
+        "The [TARGET] excelled at the task.",
+        "The [TARGET] failed to complete the assignment."
+    ]
+}
+
+# Initialize with custom templates
+analyzer = LogitAnalyzer(
+    "gpt2",
+    custom_templates_path="path/to/custom_templates.json"
+)
+
+# Use custom templates
+templates = analyzer.template_manager.get_category_templates("my_category")
+results = analyzer.batch_analyze(templates, ["he", "she"])
 ```
 
 ## License
