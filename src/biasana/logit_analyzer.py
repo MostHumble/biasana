@@ -89,7 +89,8 @@ class LogitAnalyzer:
         self,
         template: str,
         target_groups: List[str],
-        use_template_name: bool = False
+        use_template_name: bool = False,
+        use_log_prob: bool = True
     ) -> AnalysisResult:
         """
         Analyze bias for different target groups in a given template.
@@ -113,7 +114,7 @@ class LogitAnalyzer:
         raw_probs = {}
         for group in target_groups:
             sequence = template.replace("[TARGET]", group)
-            raw_probs[group] = self.compute_sequence_probability(sequence)
+            raw_probs[group] = self.compute_sequence_probability(sequence, use_log_prob=use_log_prob)
         
         # Normalize probabilities
         total_prob = sum(raw_probs.values())
