@@ -84,7 +84,7 @@ Top associations for 'man':
 #### Basic Usage
 
 ```python
-from biasana import LogitAnalyzer
+from biasana.logit_analyzer import LogitAnalyzer
 
 # Initialize analyzer
 analyzer = LogitAnalyzer("gpt2")
