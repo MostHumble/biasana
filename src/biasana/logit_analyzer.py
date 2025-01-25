@@ -10,12 +10,19 @@ from .template_manager import TemplateManager
 
 @dataclass
 class AnalysisResult:
-    """Container for analysis results"""
+    """Container for analysis results
+    
+    Args:
+        context: The input context/template
+        raw_scores: Raw model scores (can be probabilities or log probabilities, depending on use_log_prob)
+        normalized_scores: Normalized scores between 0 and 1
+        total_score: Sum of raw scores
+    """
 
     context: str
-    probabilities: Dict[str, float]
-    normalized_probabilities: Dict[str, float]
-    total_probability: float
+    raw_scores: Dict[str, float]
+    normalized_scores: Dict[str, float]
+    total_score: float
 
 
 class LogitAnalyzer:
@@ -115,10 +122,10 @@ class LogitAnalyzer:
         self.template_manager.validate_templates([template])
 
         # Compute probabilities for each group
-        raw_probs = {}
+        raw_scores = {}
         for group in target_groups:
             sequence = template.replace("[TARGET]", group)
-            raw_probs[group] = self.compute_sequence_probability(
+            raw_scores[group] = self.compute_sequence_probability(
                 sequence, use_log_prob=use_log_prob
             )
 
@@ -126,7 +133,7 @@ class LogitAnalyzer:
         # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
 
         if use_log_prob:
-            log_probs = raw_probs
+            log_probs = raw_scores
             max_log_prob = max(log_probs.values())
 
             log_probs_tensor = torch.tensor(
@@ -137,24 +144,24 @@ class LogitAnalyzer:
                 + torch.logsumexp(log_probs_tensor - max_log_prob, dim=0).item()
             )
 
-            normalized_probs = {
+            normalized_scores = {
                 group: math.exp(prob - total_log_prob)
                 for group, prob in log_probs.items()
             }
 
-            total_prob = math.exp(total_log_prob)
+            total_score = math.exp(total_log_prob)
         else:
-            total_prob = sum(raw_probs.values())
-            normalized_probs = {
-                group: prob / total_prob if total_prob > 0 else 0.0
-                for group, prob in raw_probs.items()
+            total_score = sum(raw_scores.values())
+            normalized_scores = {
+                group: prob / total_score if total_score > 0 else 0.0
+                for group, prob in raw_scores.items()
             }
 
         return AnalysisResult(
             context=template,
-            probabilities=raw_probs,
-            normalized_probabilities=normalized_probs,
-            total_probability=total_prob,
+            raw_scores=raw_scores,
+            normalized_scores=normalized_scores,
+            total_score=total_score,
         )
 
     def batch_analyze(
