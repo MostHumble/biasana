@@ -93,11 +93,11 @@ class TemplateManager:
                         self.templates[category] = templates
     
     def validate_templates(self, templates: List[str]) -> bool:
-        """Validate a list of templates."""
-        for template in templates:
-            if template.count("[TARGET]") != 1:
+        for i, template in enumerate(templates):
+            target_count = template.count("[TARGET]")
+            if target_count != 1:
                 raise ValueError(
-                    f"Template must contain exactly one [TARGET] placeholder: {template}"
+                    f"Template at index {i} must contain exactly 1 [TARGET] placeholder, but contains {target_count}"
                 )
         return True
     
