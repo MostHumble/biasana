@@ -11,7 +11,7 @@ from .template_manager import TemplateManager
 @dataclass
 class AnalysisResult:
     """Container for analysis results
-    
+
     Args:
         context: The input context/template
         raw_scores: Raw model scores (can be probabilities or log probabilities, depending on use_log_prob)
@@ -209,7 +209,7 @@ class LogitAnalyzer:
 
         # Compute max probability difference for each result
         def get_max_diff(result: AnalysisResult) -> float:
-            probs = result.normalized_probabilities
+            probs = result.normalized_scores
             return max(
                 abs(probs[g1] - probs[g2])
                 for i, g1 in enumerate(target_groups)
