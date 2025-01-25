@@ -99,6 +99,7 @@ class LogitAnalyzer:
             template: Template string or template name
             target_groups: List of target groups to analyze
             use_template_name: Whether template is a name from template manager
+            use_log_prob: Whether to use log probabilities for analysis (default: True)
             
         Returns:
             AnalysisResult containing analysis results
@@ -108,7 +109,7 @@ class LogitAnalyzer:
             if template is None:
                 raise ValueError(f"Template '{template}' not found")
         
-        self.template_manager.validate_template(template)
+        self.template_manager.validate_templates([template])
         
         # Compute probabilities for each group
         raw_probs = {}
@@ -116,12 +117,21 @@ class LogitAnalyzer:
             sequence = template.replace("[TARGET]", group)
             raw_probs[group] = self.compute_sequence_probability(sequence, use_log_prob=use_log_prob)
         
-        # Normalize probabilities
-        total_prob = sum(raw_probs.values())
-        normalized_probs = {
-            group: prob / total_prob if total_prob > 0 else 0.0
-            for group, prob in raw_probs.items()
-        }
+        # Handle log probabilities with log-sum-exp trick for numerical stability
+        if use_log_prob:
+            log_probs = raw_probs
+            max_log_prob = max(log_probs.values())
+            total_log_prob = max_log_prob + torch.log(sum(torch.exp(torch.tensor(p - max_log_prob)) for p in log_probs.values())).item()
+            normalized_probs = {
+                group: torch.exp(torch.tensor(prob - total_log_prob)).item()
+                for group, prob in log_probs.items()
+            }
+        else:
+            total_prob = sum(raw_probs.values())
+            normalized_probs = {
+                group: prob / total_prob if total_prob > 0 else 0.0
+                for group, prob in raw_probs.items()
+            }
         
         return AnalysisResult(
             context=template,
