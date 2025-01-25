@@ -25,7 +25,6 @@ classifiers = [
 dependencies = [
     "setuptools",
     "wheel",
-    "typing",
     "scikit-learn",
     "numpy",
     "spacy",
