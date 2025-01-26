@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -55,7 +55,15 @@ class LogitAnalyzer:
 
     def compute_sequence_probability(
         self, sequence: str, return_token_probs: bool = False, use_log_prob: bool = True
-    ):
+    )-> Union[float, tuple[float, List[float]]]:
+        
+        """
+        Compute the probability of generating the entire sequence using log probabilities.
+        Args:
+            sequence: Input sequence
+            return_token_probs: Whether to return individual token probabilities
+            use_log_prob: Whether to return log probabilities (default: True)
+        """
         # Tokenize the input sequence with special token masks
         tokens = self.tokenizer(sequence, return_tensors="pt", return_special_tokens_mask=True).to(self.device)
         token_ids = tokens.input_ids[0]
