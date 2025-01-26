@@ -35,7 +35,6 @@ setup(
     install_requires=[
         "setuptools",
         "wheel",
-        "typing",
         "scikit-learn",
         "numpy",
         "spacy",

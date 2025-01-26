@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biasana"
-version = "0.1.3"
+version = "0.1.4"
 description = "A package for analyzing bias in textual data."
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
@@ -13,13 +13,18 @@ authors = [
 license = { text = "Apache 2.0" }
 requires-python = ">=3.9"
 classifiers = [
-    "Topic :: Utilities",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3.9",
 ]
 dependencies = [
     "setuptools",
     "wheel",
-    "typing",
     "scikit-learn",
     "numpy",
     "spacy",
