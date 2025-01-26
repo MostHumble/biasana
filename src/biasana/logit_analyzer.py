@@ -1,12 +1,11 @@
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .template_manager import TemplateManager
-
 
 @dataclass
 class AnalysisResult:
@@ -22,8 +21,7 @@ class AnalysisResult:
     context: str
     raw_scores: Dict[str, float]
     normalized_scores: Dict[str, float]
-    total_score: float
-
+    total_score: float    
 
 class LogitAnalyzer:
     """
@@ -57,43 +55,46 @@ class LogitAnalyzer:
 
     def compute_sequence_probability(
         self, sequence: str, return_token_probs: bool = False, use_log_prob: bool = True
-    ) -> Union[float, tuple[float, List[float]]]:
-        """
-        Compute the probability of generating the entire sequence using log probabilities.
-
-        Args:
-            sequence: Input sequence
-            return_token_probs: Whether to return individual token probabilities
-            use_log_prob: Whether to return log probabilities (default: True)
-        """
-        tokens = self.tokenizer(sequence, return_tensors="pt").to(self.device)
+    ):
+        # Tokenize the input sequence with special token masks
+        tokens = self.tokenizer(sequence, return_tensors="pt", return_special_tokens_mask=True).to(self.device)
         token_ids = tokens.input_ids[0]
+        special_tokens_mask = tokens.special_tokens_mask[0]
+        
+        # Get indices of regular word tokens (mask == 0)
+        regular_word_indices = torch.nonzero(special_tokens_mask == 0).squeeze()
+        
+        if regular_word_indices.numel() == 0:
+            raise ValueError("No regular word tokens found in the sequence.")
 
+        # Extract first and last indices
+        first_index = regular_word_indices[0].item()
+        last_index = regular_word_indices[-1].item()
+
+        # Generate model outputs
         with torch.no_grad():
             outputs = self.model(input_ids=tokens.input_ids)
-            logits = outputs.logits[0, :-1]  # Remove last position
-            log_probs = torch.log_softmax(logits, dim=-1)  # Use log_softmax
+            logits = outputs.logits[0, :-1]  # Exclude the last token for causal prediction
+            
+            # Compute log probabilities
+            log_probs = torch.log_softmax(logits, dim=-1)
+            
+            # Only focus on tokens between the first and last regular tokens
+            next_tokens = token_ids[first_index + 1 : last_index + 1]  # Target token IDs
+            relevant_log_probs = log_probs[first_index:last_index].gather(
+                1, next_tokens.unsqueeze(1)
+            ).squeeze()
 
-            # Get log probability of each actual next token
-            token_log_probs = [
-                log_probs[i, token_ids[i + 1]].item() for i in range(len(token_ids) - 1)
-            ]
+            # Sum log probabilities for the sequence
+            sequence_log_prob = relevant_log_probs.sum().item()
 
-            # Sum log probabilities
-            sequence_log_prob = sum(token_log_probs)
-
+            # Compute probabilities if needed
             if not use_log_prob:
                 sequence_prob = torch.exp(torch.tensor(sequence_log_prob)).item()
-                token_probs = [
-                    torch.exp(torch.tensor(p)).item() for p in token_log_probs
-                ]
-            else:
-                sequence_prob = sequence_log_prob
-                token_probs = token_log_probs
+                token_probs = torch.exp(relevant_log_probs).tolist()
+                return (sequence_prob, token_probs) if return_token_probs else sequence_prob
 
-            if return_token_probs:
-                return sequence_prob, token_probs
-            return sequence_prob
+            return (sequence_log_prob, relevant_log_probs.tolist()) if return_token_probs else sequence_log_prob
 
     def analyze_bias(
         self,
